@@ -1,5 +1,4 @@
 
-library(ggplot2)
 library(dplyr)
 library(tidyr)
 
@@ -38,80 +37,64 @@ d1 <- as.data.frame(prime_factors) %>%
     mutate(N = min(1 / length(na.omit(prime)), 1, na.rm = TRUE))
 head(d1)
 
-p1 <- ggplot(
-    data = d1,
-    mapping = aes(
-        fill = prime, 
-        x = "",
-        y = N)) +
-    geom_bar(color = "white", width = 1,
-        stat = "identity") +
-    coord_polar(theta = "y", direction = -1) +
-    facet_wrap(~ind) +
-    scale_fill_manual(values = pal, na.value = "white") +
-    theme_bw() +
-    theme(panel.grid = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        axis.title = element_blank(),
-        panel.border = element_blank(),
-        strip.text  = element_blank(),
-        strip.background = element_blank()
-        ) + 
-    guides(fill = FALSE)
 
-#png("primes_display1.png", height = 600, width = 600, res = 200)
-print(p1)
-#dev.off()
-
-library(grid)
-library(gridExtra)
 primes <- as.integer(levels(d1$prime))
 nprimes <- length(primes)
 
+
+segment <- function(x, y, r, theta = pi / 2, thetastart = 0, 
+    nsteps = 100, offset = 0.1, ...) {
+    rs <- seq(
+        from = pi + thetastart, 
+        to = pi + theta + thetastart, 
+        len = nsteps)
+    if (offset < 0 | offset > 1) { 
+        stop("offset must be in range 0,1") 
+    }
+    if (theta < 0) {
+        stop("theta must be in range 0,2*pi")
+    }
+    if (theta > 2 * pi) { 
+        theta <- theta > 2 * pi 
+    }
+    if (theta == 2 * pi) {
+        xc <- x + (1 + offset / 2) * r * cos(rs)
+        yc <- y + (1 + offset / 2) * r * sin(rs)
+    } else {
+        mid_theta <- thetastart + theta / 2
+        rs <- rs + mid_theta
+        xc <- x + r * cos(rs)
+        yc <- y + r * sin(rs)
+        xc <- c(x, xc, x) + offset
+        yc <- c(y, yc, y) + offset
+    }
+    lines(xc, yc, ...)
+}
+
+par(mar = c(0, 0, 0, 0))
+plot(x = 1:4, y = 1:4, type = "n", xlab = "", ylab = "", axes = FALSE, 
+    xlim = c(0, nn + 1), ylim = c(nn + 1, 0), asp = 1)
+
 for (ii in seq_len(nprimes)) {
-    is_ith_prime <- apply(X = prime_factors, MARGIN = 1,
-        FUN = function(x, ii) { any(primes[ii] %in% x) }, ii = ii)
+    # find prime
+    is_ith_prime <- apply(
+        X = prime_factors, MARGIN = 1,
+        FUN = function(x, ii) { 
+            any(primes[ii] %in% x) }, ii = ii)
     # these indices are not present in this layer
     # TODO instead build up
-    rm_pos <- cbind(
-        x = rep(seq_len(nn), each = nn)[!is_ith_prime], 
-        y = rep(seq_len(nn), times = nn)[!is_ith_prime])
-    # black & white
-    p2 <- ggplot(
-        data = d1,
-        mapping = aes(
-            fill = prime, 
-            x = "",
-            y = N)) +
-        geom_bar(color = "black", fill = "white", width = 2,
-            stat = "identity") +
-        coord_polar(theta = "y", direction = -1) +
-        facet_wrap(~ind, ncol = nn, drop = FALSE) +
-        scale_fill_manual(values = pal, na.value = "white") +
-        theme_bw() +
-        theme(panel.grid = element_blank(),
-            axis.text = element_blank(),
-            axis.ticks = element_blank(),
-            axis.title = element_blank(),
-            panel.border = element_blank(),
-            strip.text  = element_blank(),
-            strip.background = element_blank()
-        ) + 
-        guides(fill = FALSE)
-    g2 <- ggplotGrob(p2)
-    # TODO remove unneeded elements from needed panels
-    
-    # remove unneeded panels
-    rm_grobs <- g2$layout$name %in% paste(rep(c("panel", "strip-t", 
-        "axis-t", "axis-b", "axis-l", "axis-r"), each = nrow(rm_pos)), 
-        apply(
-            X = rm_pos, MARGIN = 1, 
-            FUN = function(x) paste0(x[1], "-", x[2])), 
-        sep = "-")
-    # remove
-    g2$grobs[rm_grobs] <- NULL
-    g2$layout <- g2$layout[!rm_grobs, , drop = FALSE]
-    # draw
-    grid.draw(g2)
+    add_pos <- cbind(
+        x = rep(seq_len(nn), each = nn)[is_ith_prime], 
+        y = rep(seq_len(nn), times = nn)[is_ith_prime])
+    # how many segments?
+    for (jj in seq_len(nrow(add_pos))) {
+        n_vals_jj <- sum(!is.na(prime_factors[which(is_ith_prime)[jj], ]))
+        # draw segments
+        for (kk in seq_len(n_vals_jj)) {
+            segment(x = add_pos[jj, 1], y = add_pos[jj, 2], 
+                r = 0.45, 
+                theta = 2 * pi / n_vals_jj, 
+                thetastart = (kk - 1) * 2 * pi / n_vals_jj)
+        }
+    }
 }
