@@ -43,7 +43,7 @@ nprimes <- length(primes)
 
 
 segment <- function(x, y, r, theta = pi / 2, thetastart = 0, 
-    nsteps = 100, offset = 0.1, ...) {
+    nsteps = 100, offset = 0.03, ...) {
     rs <- seq(
         from = pi + thetastart, 
         to = pi + theta + thetastart, 
@@ -51,50 +51,56 @@ segment <- function(x, y, r, theta = pi / 2, thetastart = 0,
     if (offset < 0 | offset > 1) { 
         stop("offset must be in range 0,1") 
     }
-    if (theta < 0) {
-        stop("theta must be in range 0,2*pi")
-    }
-    if (theta > 2 * pi) { 
-        theta <- theta > 2 * pi 
-    }
-    if (theta == 2 * pi) {
-        xc <- x + (1 + offset / 2) * r * cos(rs)
-        yc <- y + (1 + offset / 2) * r * sin(rs)
+    # multiple of 2 * pi, i.e. full circle
+    if (round(theta %% (2 * pi), digits = 7) == 0) {
+        xc <- x + (1 + offset * 0.56) * r * cos(rs)
+        yc <- y + (1 + offset * 0.56) * r * sin(rs)
     } else {
-        mid_theta <- thetastart + theta / 2
-        rs <- rs + mid_theta
+        mid_theta <- pi + thetastart + theta / 2
+        #rs <- rs + mid_theta
         xc <- x + r * cos(rs)
         yc <- y + r * sin(rs)
-        xc <- c(x, xc, x) + offset
-        yc <- c(y, yc, y) + offset
+        #  /|
+        # /_| y = offset * sin(mid_theta)
+        #     x = offset * cos(mid_theta)
+        xc <- c(x, xc, x) + offset * cos(mid_theta)
+        yc <- c(y, yc, y) + offset * sin(mid_theta)
     }
     lines(xc, yc, ...)
 }
 
-par(mar = c(0, 0, 0, 0))
-plot(x = 1:4, y = 1:4, type = "n", xlab = "", ylab = "", axes = FALSE, 
-    xlim = c(0, nn + 1), ylim = c(nn + 1, 0), asp = 1)
+# guides
 
 for (ii in seq_len(nprimes)) {
     # find prime
     is_ith_prime <- apply(
         X = prime_factors, MARGIN = 1,
         FUN = function(x, ii) { 
-            any(primes[ii] %in% x) }, ii = ii)
+            any(primes[seq_len(ii)] %in% x) }, ii = ii)
     # these indices are not present in this layer
     # TODO instead build up
     add_pos <- cbind(
-        x = rep(seq_len(nn), each = nn)[is_ith_prime], 
-        y = rep(seq_len(nn), times = nn)[is_ith_prime])
+        x = rep(seq_len(nn), times = nn)[is_ith_prime], 
+        y = rep(seq_len(nn), each = nn)[is_ith_prime])
+    
+    svg(paste0("output/prime_", primes[ii], ".svg"))
+    par(mar = c(0, 0, 0, 0))
+    plot(x = 1:4, y = 1:4, type = "n", xlab = "", ylab = "", axes = FALSE, 
+        xlim = c(0, nn + 1), ylim = c(nn + 1, 0), asp = 1)
+    
     # how many segments?
     for (jj in seq_len(nrow(add_pos))) {
-        n_vals_jj <- sum(!is.na(prime_factors[which(is_ith_prime)[jj], ]))
+        primes_jj <- prime_factors[which(is_ith_prime)[jj], ]
+        n_vals_jj <- sum(!is.na(primes_jj))
         # draw segments
         for (kk in seq_len(n_vals_jj)) {
-            segment(x = add_pos[jj, 1], y = add_pos[jj, 2], 
-                r = 0.45, 
-                theta = 2 * pi / n_vals_jj, 
-                thetastart = (kk - 1) * 2 * pi / n_vals_jj)
+            if (primes_jj[kk] %in% primes[seq_len(ii)]) {
+                segment(x = add_pos[jj, 1], y = add_pos[jj, 2], 
+                    r = 0.45, 
+                    theta = 2 * pi / n_vals_jj, 
+                    thetastart = (kk - 1) * 2 * pi / n_vals_jj)
+            }
         }
     }
+    dev.off()
 }
