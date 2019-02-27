@@ -47,7 +47,7 @@ p1 <- ggplot(
     geom_bar(color = "white", width = 1,
         stat = "identity") +
     coord_polar(theta = "y", direction = -1) +
-    facet_wrap(~ind) +
+    facet_wrap(~ind, ncol = nn) +
     scale_fill_manual(values = pal, na.value = "white") +
     theme_bw() +
     theme(panel.grid = element_blank(),

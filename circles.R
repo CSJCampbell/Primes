@@ -20,11 +20,24 @@ prime_factors <- matrix(c(
     c(13, NA, NA, NA), 
     c( 2,  7, NA, NA), 
     c( 3,  5, NA, NA),
-    c( 2,  2,  2, 2)), 
-    nrow = nn^2, ncol = nn, byrow = TRUE)
+    c( 2,  2,  2,  2),
+    c(17, NA, NA, NA),
+    c( 2,  3,  3, NA), 
+    c(19, NA, NA, NA), 
+    c( 2,  2,  5, NA), 
+    c( 3,  7, NA, NA), 
+    c( 2, 11, NA, NA), 
+    c(23, NA, NA, NA),
+    c( 2,  2,  2,  3)),
+    ncol = nn, byrow = TRUE)
 
 apply(prime_factors, 1, prod, na.rm = TRUE)
-pal <- c("lightblue", "lightyellow", "darkblue", "pink", "orange", "darkgreen")
+pal <- c(
+    "lightblue", "#e6c85a", 
+    "darkblue", "#f0463c", 
+    "pink", "lightgreen", 
+    "purple", "green", 
+    "orange")
 
 d1 <- as.data.frame(prime_factors) %>% 
     mutate(ind = seq_len(n())) %>% 
@@ -69,7 +82,8 @@ segment <- function(x, y, r, theta = pi / 2, thetastart = 0,
     lines(xc, yc, ...)
 }
 
-# guides
+# allow non-square plot
+nr <- nrow(prime_factors) / nn
 
 for (ii in seq_len(nprimes)) {
     # find prime
@@ -80,13 +94,14 @@ for (ii in seq_len(nprimes)) {
     # these indices are not present in this layer
     # TODO instead build up
     add_pos <- cbind(
-        x = rep(seq_len(nn), times = nn)[is_ith_prime], 
-        y = rep(seq_len(nn), each = nn)[is_ith_prime])
+        x = rep(seq_len(nn), times = nr)[is_ith_prime], 
+        y = rep(seq_len(nr), each = nn)[is_ith_prime])
     
-    svg(paste0("output/prime_", primes[ii], ".svg"))
+    svg(paste0("output/prime_", primes[ii], ".svg"), 
+        width = 9, height = 12, antialias = "none")
     par(mar = c(0, 0, 0, 0))
-    plot(x = 1:4, y = 1:4, type = "n", xlab = "", ylab = "", axes = FALSE, 
-        xlim = c(0, nn + 1), ylim = c(nn + 1, 0), asp = 1)
+    plot(x = seq_len(nn), y = seq_len(nn), type = "n", xlab = "", ylab = "", axes = FALSE, 
+        xlim = c(0, nn + 1), ylim = c(nr + 1, 0), asp = 1)
     
     # how many segments?
     for (jj in seq_len(nrow(add_pos))) {
